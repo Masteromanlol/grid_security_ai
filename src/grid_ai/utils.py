@@ -57,20 +57,23 @@ def get_pandapower_net(config):
         this will dynamically import and call that function.
     """
     try:
-        # Split module path into module and function names
-        module_path, function_name = config['pandapower_module'].rsplit('.', 1)
-        
-        # Dynamically import module
-        module = importlib.import_module(module_path)
-        
-        # Get the network creation function
-        net_func = getattr(module, function_name)
-        
+        # Support two config formats:
+        # 1) pandapower_module contains full path including function: 'pandapower.networks.case1354pegase'
+        # 2) pandapower_module is module and pandapower_function contains function name
+        if 'pandapower_function' in config and config.get('pandapower_function'):
+            module = importlib.import_module(config['pandapower_module'])
+            net_func = getattr(module, config['pandapower_function'])
+        else:
+            # Assume full path provided in pandapower_module
+            module_path, function_name = config['pandapower_module'].rsplit('.', 1)
+            module = importlib.import_module(module_path)
+            net_func = getattr(module, function_name)
+
         # Create and return the network
         return net_func()
     except ImportError:
-        raise ImportError(f"Could not import pandapower module {config['pandapower_module']}")
+        raise ImportError(f"Could not import pandapower module {config.get('pandapower_module')}")
     except AttributeError:
-        raise AttributeError(f"Could not find network function in {config['pandapower_module']}")
+        raise AttributeError(f"Could not find network function in {config.get('pandapower_module')} or pandapower_function: {config.get('pandapower_function')}")
     except Exception as e:
         raise Exception(f"Error creating pandapower network: {str(e)}")

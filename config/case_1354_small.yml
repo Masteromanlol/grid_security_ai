@@ -1,0 +1,8 @@
+log_dir: data/logs
+contingency_file: data/contingencies/contingencies_1354_small.csv
+output_dir: data/raw/case_1354_small
+pandapower_module: pandapower.networks
+pandapower_function: case1354pegase
+simulation:
+  method: ac
+  contingencies_per_task: 200
