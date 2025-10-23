@@ -1,0 +1,6 @@
+contingency_file: data/contingencies/test/test_contingencies.txt
+log_dir: logs/test_simulation
+output_dir: data/raw/test_simulation
+pandapower_module: pandapower.networks.case1354pegase
+simulation:
+  method: ac

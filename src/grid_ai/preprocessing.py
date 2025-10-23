@@ -59,24 +59,34 @@ def extract_features(grid_state: Dict[str, pd.DataFrame]) -> torch.Tensor:
         
     return x
 
-def get_edge_index(net: pp.pandapowerNet) -> torch.Tensor:
-    """Extract graph connectivity from pandapower network.
+def get_edge_data(net: pp.pandapowerNet) -> Tuple[torch.Tensor, torch.Tensor]:
+    """Extract graph connectivity and edge weights from pandapower network.
     
     Args:
         net: pandapower network object
         
     Returns:
-        torch.Tensor: Edge index matrix of shape [2, num_edges]
+        Tuple of:
+            torch.Tensor: Edge index matrix of shape [2, num_edges]
+            torch.Tensor: Edge weights/features of shape [num_edges, num_features]
     """
-    # Get line connectivity
+    # Get line connectivity and features
     from_bus = net.line['from_bus'].values
     to_bus = net.line['to_bus'].values
+    line_r = net.line['r_ohm_per_km'].values * net.line['length_km'].values
+    line_x = net.line['x_ohm_per_km'].values * net.line['length_km'].values
+    line_c = net.line['c_nf_per_km'].values * net.line['length_km'].values
+    line_imax = net.line['max_i_ka'].values
     
-    # Get transformer connectivity
+    # Get transformer connectivity and features
     from_bus_t = net.trafo['hv_bus'].values
     to_bus_t = net.trafo['lv_bus'].values
+    trafo_r = net.trafo['vk_percent'].values * net.trafo['sn_mva'].values / 100
+    trafo_x = np.sqrt(net.trafo['vk_percent'].values**2 - net.trafo['vkr_percent'].values**2) * net.trafo['sn_mva'].values / 100
+    trafo_ratio = net.trafo['vn_hv_kv'].values / net.trafo['vn_lv_kv'].values
+    trafo_sn = net.trafo['sn_mva'].values
     
-    # Combine and convert to tensor
+    # Combine edges
     edges = np.concatenate([
         np.stack([from_bus, to_bus]),
         np.stack([to_bus, from_bus]),  # Add reverse edges
@@ -84,7 +94,38 @@ def get_edge_index(net: pp.pandapowerNet) -> torch.Tensor:
         np.stack([to_bus_t, from_bus_t])  # Add reverse edges
     ], axis=1)
     
-    return torch.tensor(edges, dtype=torch.long)
+    # Combine edge features [r, x, c, imax, ratio, sn]
+    # For lines: use actual values, set ratio=1, sn=None
+    # For transformers: use r/x from vk, set c=0, imax from sn
+    edge_features = np.concatenate([
+        # Lines forward
+        np.stack([
+            line_r, line_x, line_c,
+            line_imax, np.ones_like(line_r),
+            np.zeros_like(line_r)
+        ], axis=1),
+        # Lines backward (same features)
+        np.stack([
+            line_r, line_x, line_c,
+            line_imax, np.ones_like(line_r),
+            np.zeros_like(line_r)
+        ], axis=1),
+        # Transformers forward
+        np.stack([
+            trafo_r, trafo_x, np.zeros_like(trafo_r),
+            trafo_sn, trafo_ratio, trafo_sn
+        ], axis=1),
+        # Transformers backward (inverse ratio)
+        np.stack([
+            trafo_r, trafo_x, np.zeros_like(trafo_r),
+            trafo_sn, 1/trafo_ratio, trafo_sn
+        ], axis=1)
+    ], axis=0)
+    
+    return (
+        torch.tensor(edges, dtype=torch.long),
+        torch.tensor(edge_features, dtype=torch.float)
+    )
 
 def normalize_features(x: torch.Tensor, mean: torch.Tensor = None, std: torch.Tensor = None) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     """Normalize features to zero mean and unit variance.
@@ -122,9 +163,9 @@ def create_graph_dataset(config_path: str):
     if missing_keys:
         raise ValueError(f"Missing required config keys: {missing_keys}")
     
-    # Load base network and get topology
+    # Load base network and get topology with edge features
     base_net = utils.get_pandapower_net(config)
-    edge_index = get_edge_index(base_net)
+    edge_index, edge_attr = get_edge_data(base_net)
     num_buses = len(base_net.bus)
     
     # Run base case for reference
@@ -209,8 +250,8 @@ def create_graph_dataset(config_path: str):
                     logger.warning(f"Failed to extract target from {filename}: {str(e)}")
                     continue
                 
-                # Create and add Data object
-                data = Data(x=x, edge_index=edge_index, y=y)
+                # Create and add Data object with edge features
+                data = Data(x=x, edge_index=edge_index, edge_attr=edge_attr, y=y)
                 dataset.append(data)
                 
             except Exception as e:

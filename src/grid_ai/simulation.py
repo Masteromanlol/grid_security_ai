@@ -4,12 +4,46 @@ import copy
 import logging
 import pandas as pd
 import pandapower as pp
-from typing import Dict, Any
+import networkx as nx
+from typing import Dict, Any, Optional
 
 from . import utils
 
 logger = logging.getLogger(__name__)
 
+def find_isolated_buses(net: pp.pandapowerNet) -> set:
+    """Find isolated buses in a pandapower network.
+    
+    Args:
+        net: pandapower network
+        
+    Returns:
+        Set of isolated bus indices
+    """
+    # Create graph from lines
+    edges = [(int(row['from_bus']), int(row['to_bus'])) 
+            for _, row in net.line.iterrows() if row['in_service']]
+    
+    # Add transformer connections
+    edges.extend([(int(row['hv_bus']), int(row['lv_bus']))
+                for _, row in net.trafo.iterrows() if row['in_service']])
+    
+    # Create graph
+    G = nx.Graph(edges)
+    
+    # Add isolated nodes (buses with no connections)
+    G.add_nodes_from(range(len(net.bus)))
+    
+    # Find connected components
+    components = list(nx.connected_components(G))
+    
+    # The largest component is the main grid
+    main_grid = max(components, key=len)
+    
+    # All other buses are isolated
+    isolated = set(range(len(net.bus))) - set(main_grid)
+    
+    return isolated
 def run_single_contingency(base_net: pp.pandapowerNet, contingency: Dict[str, Any], method: str = 'ac') -> Dict[str, Any]:
     """Run a single contingency simulation.
     
@@ -38,9 +72,15 @@ def run_single_contingency(base_net: pp.pandapowerNet, contingency: Dict[str, An
             raise ValueError(f"Unknown contingency type: {contingency['type']}")
         
         # Check for isolated buses
-        pp.rundcpp(net)  # Quick check for connectivity
-        if len(net.isolated_buses) > 0:
-            raise pp.powerflow.LoadflowNotConverged("Network has isolated buses after contingency")
+        isolated = find_isolated_buses(net)
+        if isolated:
+            return {
+                'success': False,
+                'contingency': contingency,
+                'error': 'IsolatedBuses',
+                'isolated_buses': list(isolated),
+                'message': f"Network has {len(isolated)} isolated buses after contingency"
+            }
         
         # Try to run power flow with specified method
         if method == 'ac':
@@ -58,20 +98,16 @@ def run_single_contingency(base_net: pp.pandapowerNet, contingency: Dict[str, An
             'line_results': net.res_line.copy(),
             'trafo_results': net.res_trafo.copy(),
             'converged': net._ppc['success'],
-            'isolated_buses': list(net.isolated_buses)
+            'isolated_buses': []
         }
         
-    except pp.powerflow.LoadflowNotConverged:
-        results = {
-            'success': False,
-            'contingency': contingency,
-            'error': 'LoadflowNotConverged'
-        }
     except Exception as e:
+        error_str = str(e)
         results = {
             'success': False,
             'contingency': contingency,
-            'error': str(e)
+            'error': 'LoadflowNotConverged' if 'LoadflowNotConverged' in error_str else error_str,
+            'isolated_buses': []
         }
     
     return results
@@ -94,7 +130,7 @@ def validate_config(config: Dict[str, Any]) -> None:
     if 'method' in sim_config and sim_config['method'] not in ['ac', 'dc']:
         raise ValueError("Simulation method must be 'ac' or 'dc'")
 
-def run_simulation(config_path: str, task_id: int = None):
+def run_simulation(config_path: str, task_id: Optional[int] = None):
     """Run complete contingency analysis based on configuration.
     
     Args:
