@@ -1,0 +1,83 @@
+Byte-compiled / optimized / DLL files
+
+pycache/
+*.py[cod]
+*$py.class
+
+C extensions
+
+*.so
+
+Distribution / packaging
+
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+Logs and temporary files
+
+*.log
+*.out
+nohup.out
+*.py.save
+*.tmp
+*.swp
+*~
+
+Environment
+
+.env
+.venv
+env/
+venv/
+ENV/
+
+Data
+
+---
+
+DO NOT commit large data files.
+
+Store raw/processed data in cloud storage (S3, GCS) or cluster filesystem.
+
+This .gitignore is for the data directory.
+
+data/raw/
+data/processed/
+*.mat.gz
+*.csv
+*.parquet
+*.pkl
+
+Models
+
+---
+
+DO NOT commit model checkpoints.
+
+models/
+*.pt
+*.pth
+*.onnx
+*.h5
+
+IDE / Editor
+
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace

@@ -1,0 +1,25 @@
+name: grid_ai
+channels:
+  - pytorch
+  - pyg
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.10
+  - pip
+  - numpy
+  - pandas
+  - scipy
+  - matplotlib
+  - seaborn
+  - scikit-learn
+  - jupyterlab
+  - pytorch
+  - torchvision
+  - torchaudio
+  - pytorch-cuda=11.8 # Or your target CUDA version
+  - pyg # PyTorch Geometric
+  - pip:
+    - tqdm
+    - PyYAML
+    - pandapower

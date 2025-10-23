@@ -1,0 +1,9 @@
+---
+# Configuration for case 9241 pegase
+grid:
+  name: case9241pegase
+  path: data/grids/case9241pegase.py
+
+simulation:
+  contingencies_file: data/contingencies/contingencies_9241.txt
+  output_dir: data/raw/case_9241/

@@ -1,0 +1,2 @@
+# List of contingencies for case1354pegase
+# Format: component_type component_id

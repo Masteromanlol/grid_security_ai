@@ -1,0 +1,13 @@
+# List of contingencies for case9241pegase
+# Format: type,id
+type,id
+line,0
+line,1
+line,2
+line,3
+line,4
+transformer,0
+transformer,1
+transformer,2
+transformer,3
+transformer,4

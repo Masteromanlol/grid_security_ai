@@ -1,0 +1,8 @@
+---
+# Configuration for case 13659 pegase
+grid:
+  name: case13659pegase
+  path: data/grids/case13659pegase.py
+
+simulation:
+  output_dir: data/raw/case_13659/

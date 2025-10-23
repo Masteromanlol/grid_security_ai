@@ -1,0 +1,9 @@
+---
+# Configuration for case 1354 pegase
+grid:
+  name: case1354pegase
+  path: data/grids/case1354pegase.py
+
+simulation:
+  contingencies_file: data/contingencies/contingencies_1354.txt
+  output_dir: data/raw/case_1354/
