@@ -6,21 +6,21 @@ normalization_params_file: "data/processed/normalization.pt"
 
 # Model parameters
 model:
-  input_dim: 10  # 4 base features + 4 contingency features + 2 contingency type
+  input_dim: 10  # Node features from actual data
   hidden_dim: 256  # Larger hidden dim for complex grid patterns
   num_layers: 4    # Deep network for capturing multi-hop dependencies
   dropout: 0.2     # Increased dropout for better regularization
-  output_dim: 2    # Voltage magnitude and angle prediction
+  output_dim: 2    # Two regression targets from actual data
   gnn_type: "gat"  # Using GAT for attention to important connections
   use_edge_weights: true   # Utilize power flow information
   residual: true   # Help with gradient flow in deep network
 
 # Training parameters optimized for grid security
 training:
-  batch_size: 64          # Larger batch size for stable gradients
+  batch_size: 1           # Single sample for smoke test
   learning_rate: 0.001    # Standard learning rate for Adam
-  num_epochs: 300         # Allow for longer training
-  patience: 30            # More patience due to complex optimization landscape
-  val_split: 0.2         # Standard validation split
-  max_grad_norm: 1.0     # Prevent exploding gradients
-  weight_decay: 0.0001   # L2 regularization to prevent overfitting
+  num_epochs: 1           # Smoke test: single epoch
+  patience: 30            # Patience (not relevant for 1 epoch)
+  val_split: 0.0          # No validation split for smoke test
+  max_grad_norm: 1.0      # Prevent exploding gradients
+  weight_decay: 0.0001    # L2 regularization to prevent overfitting

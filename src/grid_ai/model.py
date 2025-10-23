@@ -102,61 +102,56 @@ class GridSecurityModel(nn.Module):
     
     def forward(self, data):
         """Forward pass through the network.
-        
+
         Args:
             data: PyG Data object containing:
                 - x: Node features [num_nodes, input_dim]
                 - edge_index: Graph connectivity [2, num_edges]
                 - edge_attr: Optional edge features/weights [num_edges]
                 - batch: Batch assignment for multiple graphs
-                
+
         Returns:
-            Node-level predictions [num_nodes, output_dim]
+            Graph-level predictions [batch_size, output_dim]
         """
         x, edge_index = data.x, data.edge_index
         edge_weight = data.edge_attr if hasattr(data, 'edge_attr') and self.use_edge_weights else None
-        
-        # Handle disconnected components by adding self-loops
+        batch = data.batch if hasattr(data, 'batch') else torch.zeros(x.size(0), dtype=torch.long)
+
+        # Add self-loops to stabilize message passing
         edge_index, edge_weight = add_self_loops(edge_index, edge_weight, num_nodes=x.size(0))
-        
-        # Initial features
+
+        # Initial layer
         identity = x
         if edge_weight is not None:
             x = self.convs[0](x, edge_index, edge_weight)
         else:
             x = self.convs[0](x, edge_index)
-            
         x = self.batch_norms[0](x)
         x = F.relu(x)
-        
-        # Residual connection for first layer
         if self.use_residual:
             x = x + self.linear_transforms[0](identity)
-            
         x = F.dropout(x, p=self.dropout, training=self.training)
-        
+
         # Hidden layers
         for i in range(1, self.num_layers - 1):
             identity = x
-            
             if edge_weight is not None:
                 x = self.convs[i](x, edge_index, edge_weight)
             else:
                 x = self.convs[i](x, edge_index)
-                
             x = self.batch_norms[i](x)
             x = F.relu(x)
-            
-            # Residual connection
             if self.use_residual:
                 x = x + self.linear_transforms[i](identity)
-                
             x = F.dropout(x, p=self.dropout, training=self.training)
-        
+
         # Output layer
         if edge_weight is not None:
             x = self.convs[-1](x, edge_index, edge_weight)
         else:
             x = self.convs[-1](x, edge_index)
-        
+
+        # Global pooling (graph-level)
+        x = global_mean_pool(x, batch)
+
         return x

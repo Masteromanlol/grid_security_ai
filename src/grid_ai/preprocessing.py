@@ -147,6 +147,73 @@ def normalize_features(x: torch.Tensor, mean: torch.Tensor = None, std: torch.Te
     x_norm = (x - mean) / std
     return x_norm, mean, std
 
+def process_result_file(filepath: str, base_features: torch.Tensor, edge_index: torch.Tensor, 
+                     edge_attr: torch.Tensor, num_buses: int, logger: logging.Logger) -> tuple:
+    """Process a single simulation result file.
+    
+    Args:
+        filepath: Path to the result file
+        base_features: Base network features
+        edge_index: Edge connectivity
+        edge_attr: Edge features
+        num_buses: Number of buses in network
+        logger: Logger instance
+        
+    Returns:
+        Tuple of (Data object, features tensor) or (None, None) if processing fails
+    """
+    try:
+        # Load simulation result
+        with open(filepath, 'rb') as f:
+            result = pd.read_pickle(f)
+        
+        if not result['success']:
+            logger.warning(f"Skipping failed simulation {filepath}")
+            return None, None
+        
+        # Extract features
+        try:
+            x = extract_features(result)
+        except Exception as e:
+            logger.warning(f"Failed to extract features from {filepath}: {str(e)}")
+            return None, None
+        
+        # Validate feature dimensions
+        if x.shape[0] != num_buses:
+            logger.warning(f"Feature dimension mismatch in {filepath}: {x.shape[0]} != {num_buses}")
+            return None, None
+        
+        # Create contingency encoding (one-hot)
+        cont_type = torch.zeros(num_buses, 2)  # [line, transformer]
+        if result['contingency']['type'] == 'line':
+            cont_type[:, 0] = 1
+        elif result['contingency']['type'] == 'transformer':
+            cont_type[:, 1] = 1
+        else:
+            logger.warning(f"Unknown contingency type in {filepath}: {result['contingency']['type']}")
+            return None, None
+        
+        # Combine features
+        x = torch.cat([base_features, x, cont_type], dim=1)
+        
+        # Extract target
+        try:
+            y = torch.tensor(
+                result['bus_results'][['vm_pu', 'va_degree']].values,
+                dtype=torch.float
+            )
+        except Exception as e:
+            logger.warning(f"Failed to extract target from {filepath}: {str(e)}")
+            return None, None
+        
+        # Create Data object with edge features
+        data = Data(x=x, edge_index=edge_index, edge_attr=edge_attr, y=y)
+        return data, x
+        
+    except Exception as e:
+        logger.warning(f"Error processing {filepath}: {str(e)}")
+        return None, None
+
 def create_graph_dataset(config_path: str):
     """Create PyG dataset from simulation results.
     
@@ -158,10 +225,13 @@ def create_graph_dataset(config_path: str):
     logger = utils.setup_logging(config['log_dir'], 'preprocessing')
     
     # Validate config
-    required_keys = ['raw_simulation_dir', 'processed_dataset_file', 'normalization_params_file']
+    required_keys = ['processed_dataset_file', 'normalization_params_file']
     missing_keys = [k for k in required_keys if k not in config]
     if missing_keys:
         raise ValueError(f"Missing required config keys: {missing_keys}")
+    
+    if 'raw_simulation_dir' not in config and 'raw_simulation_dirs' not in config:
+        raise ValueError("Either raw_simulation_dir or raw_simulation_dirs must be provided")
     
     # Load base network and get topology with edge features
     base_net = utils.get_pandapower_net(config)
@@ -188,77 +258,61 @@ def create_graph_dataset(config_path: str):
     # Process simulation results in chunks to manage memory
     dataset = []
     all_features = []  # For computing normalization parameters
-    raw_dir = config['raw_simulation_dir']
+    
+    # Handle either single directory or list of directories
+    raw_dirs = config.get('raw_simulation_dirs', [config.get('raw_simulation_dir')])
+    if isinstance(raw_dirs, str):
+        raw_dirs = [raw_dirs]
+    
+    total_files = 0
+    pkl_files_by_dir = {}
     
     # Count total files first
-    pkl_files = [f for f in os.listdir(raw_dir) if f.endswith('.pkl')]
-    total_files = len(pkl_files)
+    for raw_dir in raw_dirs:
+        if not os.path.exists(raw_dir):
+            logger.warning(f"Directory not found: {raw_dir}, skipping...")
+            continue
+        pkl_files = [f for f in os.listdir(raw_dir) if f.endswith('.pkl')]
+        if pkl_files:
+            pkl_files_by_dir[raw_dir] = pkl_files
+            total_files += len(pkl_files)
     
     if total_files == 0:
-        raise ValueError(f"No .pkl files found in {raw_dir}")
+        raise ValueError("No .pkl files found in any input directories")
     
-    logger.info(f"Processing {total_files} result files")
+    logger.info(f"Found {total_files} total files across {len(pkl_files_by_dir)} directories")
     
-    # Process in chunks of 1000 files
-    chunk_size = 1000
-    for i in range(0, total_files, chunk_size):
-        chunk_files = pkl_files[i:i + chunk_size]
+    # Process in chunks across all directories
+    chunk_size = config.get('chunk_size', 1000)
+    processed_count = 0
+    
+    for raw_dir, pkl_files in pkl_files_by_dir.items():
+        logger.info(f"Processing directory: {raw_dir}")
+        processed_in_dir = 0
         
-        for filename in chunk_files:
-            try:
-                # Load simulation result
-                with open(os.path.join(raw_dir, filename), 'rb') as f:
-                    result = pd.read_pickle(f)
+        for i in range(0, len(pkl_files), chunk_size):
+            chunk_files = pkl_files[i:i + chunk_size]
+            
+            for filename in chunk_files:
+                filepath = os.path.join(raw_dir, filename)
+                result = process_result_file(
+                    filepath, base_features, edge_index, 
+                    edge_attr, num_buses, logger
+                )
                 
-                if not result['success']:
-                    logger.warning(f"Skipping failed simulation {filename}")
-                    continue
-                
-                # Extract features
-                try:
-                    x = extract_features(result)
-                except Exception as e:
-                    logger.warning(f"Failed to extract features from {filename}: {str(e)}")
-                    continue
-                
-                # Validate feature dimensions
-                if x.shape[0] != num_buses:
-                    logger.warning(f"Feature dimension mismatch in {filename}: {x.shape[0]} != {num_buses}")
-                    continue
-                
-                # Create contingency encoding (one-hot)
-                cont_type = torch.zeros(num_buses, 2)  # [line, transformer]
-                if result['contingency']['type'] == 'line':
-                    cont_type[:, 0] = 1
-                elif result['contingency']['type'] == 'transformer':
-                    cont_type[:, 1] = 1
-                else:
-                    logger.warning(f"Unknown contingency type in {filename}: {result['contingency']['type']}")
-                    continue
-                
-                # Combine features
-                x = torch.cat([base_features, x, cont_type], dim=1)
-                all_features.append(x)
-                
-                # Extract target
-                try:
-                    y = torch.tensor(
-                        result['bus_results'][['vm_pu', 'va_degree']].values,
-                        dtype=torch.float
-                    )
-                except Exception as e:
-                    logger.warning(f"Failed to extract target from {filename}: {str(e)}")
-                    continue
-                
-                # Create and add Data object with edge features
-                data = Data(x=x, edge_index=edge_index, edge_attr=edge_attr, y=y)
-                dataset.append(data)
-                
-            except Exception as e:
-                logger.warning(f"Error processing {filename}: {str(e)}")
-                continue
+                if result is not None:
+                    data, x = result
+                    if data is not None:
+                        dataset.append(data)
+                        all_features.append(x)
+                        processed_count += 1
+                        
+                        if processed_count % 100 == 0:
+                            logger.info(f"Processed {processed_count} samples out of {total_files} total files")
+            
+            logger.info(f"Finished chunk. Total samples so far: {len(dataset)}")
         
-        logger.info(f"Processed {len(dataset)} samples out of {i + len(chunk_files)} files")
+        logger.info(f"Finished processing {raw_dir}. Total samples so far: {len(dataset)}")
     
     if len(dataset) == 0:
         raise ValueError("No valid samples could be created")
