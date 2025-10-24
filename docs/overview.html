@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grid Security AI - Project Explorer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f5f5f4; /* stone-100 */
+            color: #292524; /* stone-800 */
+        }
+        /* Custom styles for workflow diagram arrows */
+        .workflow-arrow::after {
+            content: '→';
+            font-size: 1.5rem; /* text-2xl */
+            color: #a8a29e; /* stone-400 */
+            margin: 0 0.5rem; /* mx-2 */
+        }
+        .workflow-step:last-child .workflow-arrow::after {
+            content: ''; /* No arrow after the last step */
+        }
+        /* File tree styles */
+        .file-tree ul {
+            padding-left: 1rem;
+            border-left: 1px solid #d6d3d1; /* stone-300 */
+            margin-left: 0.5rem;
+        }
+        .file-tree li {
+            margin-bottom: 0.25rem;
+        }
+        .folder > span {
+            cursor: pointer;
+            font-weight: 500;
+        }
+        .folder > span::before {
+            content: '► ';
+            font-size: 0.8em;
+            margin-right: 0.25rem;
+        }
+        .folder.open > span::before {
+            content: '▼ ';
+        }
+        .file {
+            cursor: pointer;
+            color: #44403c; /* stone-700 */
+        }
+         .file:hover {
+             color: #0ea5e9; /* sky-500 */
+         }
+        .file::before {
+            content: '📄 ';
+            font-size: 0.9em;
+        }
+        .hidden-ul {
+            display: none;
+        }
+        .folder.open > .hidden-ul {
+            display: block;
+        }
+        /* Active nav link style */
+        .nav-link.active {
+            font-weight: 600;
+            color: #0ea5e9; /* sky-500 */
+            border-bottom: 2px solid #0ea5e9; /* sky-500 */
+        }
+        /* Tooltip style */
+        .tooltip {
+            position: relative;
+            display: inline-block;
+        }
+        .tooltip .tooltiptext {
+            visibility: hidden;
+            width: 300px;
+            background-color: #292524; /* stone-800 */
+            color: #fff;
+            text-align: left;
+            border-radius: 6px;
+            padding: 8px;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%;
+            left: 50%;
+            margin-left: -150px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            font-size: 0.875rem; /* text-sm */
+            line-height: 1.25rem;
+        }
+         .tooltip:hover .tooltiptext {
+             visibility: visible;
+             opacity: 1;
+         }
+
+        /* Chart container styling */
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px; /* Example max-width */
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px; /* Base height */
+            max-height: 400px;
+        }
+        @media (min-width: 768px) {
+             .chart-container {
+                 height: 350px; /* Taller on medium screens and up */
+             }
+        }
+
+    </style>
+    <!-- Chosen Palette: Neutral Stone -->
+    <!-- Application Structure Plan: The SPA uses a thematic/functional structure with a top navigation bar (Overview, Workflow, Components, Config & Data, Usage). This structure organizes the project description logically, allowing users to explore aspects like the overall process (Workflow diagram), code structure (Components/File Tree), configuration/data types, or how to run scripts (Usage). This is more user-friendly for understanding a software project than mirroring the linear Markdown file. Key interactions include clicking workflow steps, expanding/collapsing the file tree, and hovering files for descriptions. -->
+    <!-- Visualization & Content Choices:
+        - Overview: Inform -> HTML Text -> None -> Standard introduction. Method: HTML.
+        - Workflow: Organize/Inform -> HTML/CSS Diagram -> Click/Hover steps -> Visualizes process flow clearly. Method: HTML/CSS/JS.
+        - Components/File Tree: Organize/Inform -> Interactive HTML List -> Expand/Collapse/Hover -> Allows exploration of code structure. Method: HTML/CSS/JS.
+        - Config & Data: Inform -> HTML Text/Lists -> Minimal -> Summarizes project inputs/outputs. Method: HTML.
+        - Usage/Scripts: Inform -> HTML List/Table -> Filter/Search (optional) -> Quick reference for running scripts. Method: HTML/JS.
+        - CONFIRMATION: No Chart.js/Plotly used as no quantitative report data provided. No SVG graphics used. No Mermaid JS used. Structure visualization uses HTML/CSS/JS. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+</head>
+<body class="bg-stone-100 text-stone-800">
+    <nav class="bg-white shadow-md sticky top-0 z-10">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <span class="text-xl font-bold text-stone-700">Grid Security AI Explorer</span>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <a href="#overview" class="nav-link px-3 py-2 text-sm font-medium text-stone-600 hover:text-sky-500">Overview</a>
+                    <a href="#workflow" class="nav-link px-3 py-2 text-sm font-medium text-stone-600 hover:text-sky-500">Workflow</a>
+                    <a href="#components" class="nav-link px-3 py-2 text-sm font-medium text-stone-600 hover:text-sky-500">Components</a>
+                    <a href="#config-data" class="nav-link px-3 py-2 text-sm font-medium text-stone-600 hover:text-sky-500">Config & Data</a>
+                    <a href="#usage" class="nav-link px-3 py-2 text-sm font-medium text-stone-600 hover:text-sky-500">Usage</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+        <section id="overview" class="mb-12 scroll-mt-20">
+            <h2 class="text-3xl font-bold text-stone-700 mb-4">Project Overview</h2>
+            <div class="bg-white p-6 rounded-lg shadow space-y-4 text-stone-700">
+                <p>This project implements a deep learning approach, primarily using Graph Neural Networks (GNNs), for power grid security assessment. It involves simulating grid contingencies (like line or transformer outages), preprocessing the simulation data, training AI models to predict the grid's state or stability after such events, and evaluating the model performance.</p>
+                <p>The system is designed to handle various standard power grid test cases (e.g., PEGASE systems) and leverages libraries like Pandapower for simulation, PyTorch and PyTorch Geometric for GNN modeling, and Scikit-learn for potentially baseline models or ML utilities. The project includes scripts for automating the workflow, configuration files for flexibility, and tools for analysis and testing.</p>
+                <p>This interactive explorer helps you understand the project's structure, workflow, and key components based on its file descriptions.</p>
+            </div>
+        </section>
+
+        <section id="workflow" class="mb-12 scroll-mt-20">
+            <h2 class="text-3xl font-bold text-stone-700 mb-4">Project Workflow</h2>
+             <div class="bg-white p-6 rounded-lg shadow">
+                 <p class="text-stone-700 mb-6">The core workflow involves generating simulation data, processing it into a format suitable for machine learning, training a model, and finally evaluating its performance. Click or hover over the steps below to see potentially relevant files (based on naming conventions and descriptions).</p>
+                <div id="workflow-diagram" class="flex flex-wrap items-center justify-center space-x-2 md:space-x-4 text-center">
+                    <div class="workflow-step p-4 m-2 bg-stone-50 border border-stone-300 rounded-lg shadow-sm min-w-[120px] md:min-w-[150px] tooltip cursor-pointer" data-files="generate_contingencies.py, run_simulation_worker.py, submit_data_generation.sh, config/*.yml, data/grids/*.py, data/contingencies/*.txt">
+                        <span class="font-semibold text-stone-700">1. Simulate</span>
+                        <div class="workflow-arrow"></div>
+                        <span class="tooltiptext text-xs">Run power flow simulations for various contingencies using Pandapower. Configuration defines grid cases and contingency lists. Scripts automate simulation execution, possibly on HPC. (Files: generate_contingencies.py, run_simulation_worker.py, submit_data_generation.sh, config/*.yml, data/grids/*.py, data/contingencies/*.txt)</span>
+                    </div>
+                    <div class="workflow-step p-4 m-2 bg-stone-50 border border-stone-300 rounded-lg shadow-sm min-w-[120px] md:min-w-[150px] tooltip cursor-pointer" data-files="run_preprocessing.py, preprocessing.py, schema.py, aggregate_results.py, data/raw/, config/preprocessing.yml">
+                        <span class="font-semibold text-stone-700">2. Preprocess</span>
+                        <div class="workflow-arrow"></div>
+                         <span class="tooltiptext text-xs">Aggregate raw simulation results (.pkl). Extract features, define graph structure, normalize data, and create PyTorch Geometric datasets (.pt). (Files: run_preprocessing.py, preprocessing.py, schema.py, aggregate_results.py, data/raw/, config/preprocessing.yml)</span>
+                    </div>
+                    <div class="workflow-step p-4 m-2 bg-stone-50 border border-stone-300 rounded-lg shadow-sm min-w-[120px] md:min-w-[150px] tooltip cursor-pointer" data-files="run_training.py, train.py, model.py, gnn.py, config/training.yml, data/processed/*.pt, submit_training.sh">
+                        <span class="font-semibold text-stone-700">3. Train Model</span>
+                         <div class="workflow-arrow"></div>
+                         <span class="tooltiptext text-xs">Train the GNN model using the processed dataset. Includes defining the model architecture, training loop, validation, and saving checkpoints. (Files: run_training.py, train.py, model.py, gnn.py, config/training.yml, data/processed/*.pt, submit_training.sh)</span>
+                    </div>
+                     <div class="workflow-step p-4 m-2 bg-stone-50 border border-stone-300 rounded-lg shadow-sm min-w-[120px] md:min-w-[150px] tooltip cursor-pointer" data-files="run_evaluation.py, evaluate.py, run_diagnostics.py, model_analysis.ipynb, visualization.py, models/">
+                         <span class="font-semibold text-stone-700">4. Evaluate</span>
+                         <div class="workflow-arrow"></div>
+                         <span class="tooltiptext text-xs">Assess the trained model's performance on a test set. Calculate metrics, run diagnostics, and visualize results. (Files: run_evaluation.py, evaluate.py, run_diagnostics.py, model_analysis.ipynb, visualization.py, models/)</span>
+                    </div>
+                </div>
+                <div id="workflow-details" class="mt-6 p-4 border border-stone-200 rounded-lg bg-stone-50 min-h-[50px] text-sm text-stone-600">
+                    Hover over or click a workflow step to see potentially related files.
+                </div>
+            </div>
+        </section>
+
+        <section id="components" class="mb-12 scroll-mt-20">
+            <h2 class="text-3xl font-bold text-stone-700 mb-4">Project Components & File Structure</h2>
+            <div class="bg-white p-6 rounded-lg shadow">
+                 <p class="text-stone-700 mb-6">Explore the project's file structure below. Click on folders to expand/collapse them. Hover over files to see their descriptions.</p>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="md:col-span-1 file-tree text-sm border border-stone-200 p-4 rounded-lg max-h-[60vh] overflow-y-auto">
+                        <ul>
+                            <li class="folder">
+                                <span>grid_security_ai-main</span>
+                                <ul class="hidden-ul">
+                                    <li class="file" data-desc=".gitignore: Specifies intentionally untracked files that Git should ignore (like temporary files, build outputs, environment files, large data files).">.gitignore</li>
+                                    <li class="file" data-desc="01_TSDP.mat.gz/01_TSDP.mat: MATLAB data file (.mat), possibly compressed (.gz). Likely contains time-series simulation data or measurements for the PEGASE 13659 AC case. Probably raw input data.">01_TSDP.mat</li>
+                                    <li class="folder">
+                                        <span>config</span>
+                                        <ul class="hidden-ul">
+                                            <li class="file" data-desc="case_1354.yml: Config for PEGASE 1354-bus case.">case_1354.yml</li>
+                                            <li class="file" data-desc="case_1354_small.yml: Config for a smaller version of the 1354-bus case.">case_1354_small.yml</li>
+                                            <li class="file" data-desc="case_13659.yml: Config for PEGASE 13659-bus case.">case_13659.yml</li>
+                                            <li class="file" data-desc="case_9241.yml: Config for PEGASE 9241-bus case.">case_9241.yml</li>
+                                            <li class="file" data-desc="preprocessing.yml: Config for data preprocessing steps.">preprocessing.yml</li>
+                                            <li class="file" data-desc="training.yml: Config for model training process.">training.yml</li>
+                                            <li class="folder">
+                                                 <span>test</span>
+                                                 <ul class="hidden-ul">
+                                                     <li class="file" data-desc="test_simulation.yml: Config for a small test simulation.">test_simulation.yml</li>
+                                                 </ul>
+                                             </li>
+                                        </ul>
+                                    </li>
+                                     <li class="file" data-desc="conftest.py: Configuration file for pytest testing framework.">conftest.py</li>
+                                     <li class="folder">
+                                         <span>data</span>
+                                         <ul class="hidden-ul">
+                                             <li class="file" data-desc=".gitignore: Ignores large data files within the data directory.">.gitignore</li>
+                                             <li class="folder">
+                                                 <span>contingencies</span>
+                                                 <ul class="hidden-ul">
+                                                    <li class="file" data-desc="contingencies_9241.txt: Contingency list for case9241pegase.">contingencies_9241.txt</li>
+                                                     <li class="folder">
+                                                         <span>test</span>
+                                                         <ul class="hidden-ul">
+                                                             <li class="file" data-desc="test_contingencies.txt: Small contingency list for test simulations.">test_contingencies.txt</li>
+                                                         </ul>
+                                                     </li>
+                                                 </ul>
+                                             </li>
+                                             <li class="folder">
+                                                 <span>grids</span>
+                                                 <ul class="hidden-ul">
+                                                     <li class="file" data-desc="case1354pegase.py: Code to define/load the 1354-bus grid structure.">case1354pegase.py</li>
+                                                     <li class="file" data-desc="case13659pegase.py: Code to define/load the 13659-bus grid structure.">case13659pegase.py</li>
+                                                     <li class="file" data-desc="case9241pegase.py: Code to define/load the 9241-bus grid structure.">case9241pegase.py</li>
+                                                 </ul>
+                                             </li>
+                                             <li class="folder"><span>processed</span><ul class="hidden-ul"><li class="file" data-desc=".gitignore: Ignores contents of processed data folder.">.gitignore</li></ul></li>
+                                             <li class="folder"><span>raw</span><ul class="hidden-ul"><li class="file" data-desc=".gitignore: Ignores contents of raw data folder.">.gitignore</li></ul></li>
+                                             <li class="folder"><span>sample</span><ul class="hidden-ul"><li class="file" data-desc=".gitignore: Ignores contents of sample data folder.">.gitignore</li></ul></li>
+                                         </ul>
+                                     </li>
+                                    <li class="folder"><span>docs</span><ul class="hidden-ul"><li class="file" data-desc="README.md: Supplementary documentation.">README.md</li></ul></li>
+                                    <li class="file" data-desc="environment.yml: Conda environment definition with dependencies.">environment.yml</li>
+                                    <li class="folder"><span>models</span><ul class="hidden-ul"><li class="file" data-desc=".gitignore: Ignores trained model files.">.gitignore</li></ul></li>
+                                     <li class="folder">
+                                         <span>notebooks</span>
+                                         <ul class="hidden-ul">
+                                             <li class="file" data-desc="model_analysis.ipynb: Jupyter notebook for model analysis and visualization.">model_analysis.ipynb</li>
+                                         </ul>
+                                     </li>
+                                    <li class="file" data-desc="README.md: Main project documentation (overview, setup, usage).">README.md</li>
+                                    <li class="folder">
+                                         <span>scripts</span>
+                                         <ul class="hidden-ul">
+                                            <li class="file" data-desc="aggregate_results.py: Aggregates individual simulation results.">aggregate_results.py</li>
+                                            <li class="file" data-desc="check_contingencies.py: Inspects/validates contingency file format.">check_contingencies.py</li>
+                                            <li class="file" data-desc="generate_contingencies.py: Generates N-1 contingency lists.">generate_contingencies.py</li>
+                                            <li class="file" data-desc="generate_synthetic_data.py: Creates a small synthetic dataset for testing.">generate_synthetic_data.py</li>
+                                            <li class="folder">
+                                                 <span>hpc</span>
+                                                 <ul class="hidden-ul">
+                                                    <li class="file" data-desc="_template_data_job.slurm: SLURM template for data generation jobs.">_template_data_job.slurm</li>
+                                                    <li class="file" data-desc="_template_train_job.slurm: SLURM template for training jobs.">_template_train_job.slurm</li>
+                                                    <li class="file" data-desc="check_job_status.sh: Checks SLURM job status.">check_job_status.sh</li>
+                                                    <li class="file" data-desc="submit_data_generation.sh: Submits SLURM job array for simulations.">submit_data_generation.sh</li>
+                                                    <li class="file" data-desc="submit_training.sh: Submits SLURM training jobs.">submit_training.sh</li>
+                                                 </ul>
+                                             </li>
+                                            <li class="file" data-desc="make_small_contingencies.py: Creates a smaller contingency subset.">make_small_contingencies.py</li>
+                                            <li class="file" data-desc="model_analysis.py: Script version of the model analysis notebook.">model_analysis.py</li>
+                                            <li class="file" data-desc="run_diagnostics.py: Runs detailed diagnostics on a trained model.">run_diagnostics.py</li>
+                                            <li class="file" data-desc="run_evaluation.py: Evaluates a trained model on test data.">run_evaluation.py</li>
+                                            <li class="file" data-desc="run_preprocessing.py: Executes the data preprocessing pipeline.">run_preprocessing.py</li>
+                                            <li class="file" data-desc="run_simulation_worker.py: Runs a subset of simulations (for parallel execution).">run_simulation_worker.py</li>
+                                            <li class="file" data-desc="run_small_simulation.py: Runs a small simulation using specific config.">run_small_simulation.py</li>
+                                            <li class="file" data-desc="run_training.py: Executes the model training pipeline.">run_training.py</li>
+                                            <li class="file" data-desc="test_simulation.py: Runs a very small test simulation for verification.">test_simulation.py</li>
+                                             <li class="file" data-desc="test_simulation2.py: Another script for running a small test simulation (more verbose).">test_simulation2.py</li>
+                                            <li class="file" data-desc="train_model.py: Older/alternate script for training, possibly non-GNN models.">train_model.py</li>
+                                         </ul>
+                                     </li>
+                                    <li class="file" data-desc="setup.py: Build script for installing the grid_ai package.">setup.py</li>
+                                    <li class="file" data-desc="setup.sh: Shell script for automating project setup tasks.">setup.sh</li>
+                                    <li class="folder">
+                                         <span>src</span>
+                                         <ul class="hidden-ul">
+                                             <li class="folder">
+                                                 <span>grid_ai</span>
+                                                 <ul class="hidden-ul">
+                                                    <li class="file" data-desc="__init__.py: Makes src/grid_ai a Python package.">__init__.py</li>
+                                                    <li class="file" data-desc="components.py: Extracts features for specific grid components.">components.py</li>
+                                                    <li class="file" data-desc="contingency.py: Analyzes the impact of contingencies (cascade, load loss, etc.).">contingency.py</li>
+                                                    <li class="folder">
+                                                         <span>data</span>
+                                                         <ul class="hidden-ul">
+                                                             <li class="file" data-desc="schema.py: Defines data structures (GridFeatures, ProcessedDataset).">schema.py</li>
+                                                         </ul>
+                                                     </li>
+                                                    <li class="file" data-desc="data_loader.py: Utilities for loading data (placeholder).">data_loader.py</li>
+                                                    <li class="file" data-desc="evaluate.py: Functions for model evaluation and diagnostics.">evaluate.py</li>
+                                                    <li class="file" data-desc="features.py: Functions for feature engineering (network, graph, contingency features).">features.py</li>
+                                                    <li class="folder">
+                                                         <span>ml</span>
+                                                         <ul class="hidden-ul">
+                                                            <li class="file" data-desc="__init__.py: Makes src/grid_ai/ml a sub-package.">__init__.py</li>
+                                                            <li class="file" data-desc="cv.py: Cross-validation helpers (placeholder).">cv.py</li>
+                                                            <li class="file" data-desc="ensembles.py: Model ensembling helpers (placeholder).">ensembles.py</li>
+                                                            <li class="file" data-desc="feature_selection.py: Feature selection utilities (placeholder).">feature_selection.py</li>
+                                                            <li class="file" data-desc="hyperopt.py: Hyperparameter optimization helpers (placeholder).">hyperopt.py</li>
+                                                            <li class="file" data-desc="model_selection.py: Compares performance of different ML models.">model_selection.py</li>
+                                                            <li class="file" data-desc="registry.py: Simple model registry for saving/loading models.">registry.py</li>
+                                                         </ul>
+                                                     </li>
+                                                    <li class="file" data-desc="ml_pipeline.py: Scikit-learn based ML pipeline definition.">ml_pipeline.py</li>
+                                                    <li class="file" data-desc="model.py: Main PyTorch Geometric GNN model definition (GridSecurityModel).">model.py</li>
+                                                    <li class="folder">
+                                                         <span>models</span>
+                                                         <ul class="hidden-ul">
+                                                             <li class="file" data-desc="gnn.py: Alternate GNN model definition (GridSecurityGNN).">gnn.py</li>
+                                                         </ul>
+                                                     </li>
+                                                    <li class="file" data-desc="preprocessing.py: Core logic for preprocessing simulation results into datasets.">preprocessing.py</li>
+                                                    <li class="file" data-desc="simulation.py: Functions for running Pandapower simulations and applying contingencies.">simulation.py</li>
+                                                    <li class="file" data-desc="time_series.py: Extracts features from time-series data.">time_series.py</li>
+                                                    <li class="file" data-desc="train.py: Logic for training the PyTorch Geometric GNN model.">train.py</li>
+                                                    <li class="file" data-desc="utils.py: General utility functions (config loading, logging, seeding, etc.).">utils.py</li>
+                                                    <li class="file" data-desc="visualization.py: Functions for creating plots (confusion matrix, ROC, etc.).">visualization.py</li>
+                                                 </ul>
+                                             </li>
+                                         </ul>
+                                     </li>
+                                    <li class="folder">
+                                         <span>tests</span>
+                                         <ul class="hidden-ul">
+                                            <li class="file" data-desc="__init__.py: Makes tests a Python package.">__init__.py</li>
+                                            <li class="file" data-desc="test_model.py: Unit tests for the GNN model.">test_model.py</li>
+                                            <li class="file" data-desc="test_model_selection.py: Unit tests for ML model selection utilities.">test_model_selection.py</li>
+                                            <li class="file" data-desc="test_preprocessing.py: Unit tests for data preprocessing functions.">test_preprocessing.py</li>
+                                            <li class="file" data-desc="test_schema.py: Unit tests for data schema definitions.">test_schema.py</li>
+                                            <li class="file" data-desc="test_simulation.py: Unit tests for simulation functions.">test_simulation.py</li>
+                                            <li class="file" data-desc="test_utils.py: Unit tests for utility functions.">test_utils.py</li>
+                                         </ul>
+                                     </li>
+                                     <li class="file" data-desc="tmp_create_sample.py: Temporary script to generate a synthetic sample file.">tmp_create_sample.py</li>
+                                </ul>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="md:col-span-2 bg-stone-50 border border-stone-200 p-4 rounded-lg min-h-[150px]">
+                        <h4 class="font-semibold text-stone-700 mb-2">File Description:</h4>
+                        <p id="file-description" class="text-sm text-stone-600 italic">Hover over a file in the tree to see its description here.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+         <section id="config-data" class="mb-12 scroll-mt-20">
+            <h2 class="text-3xl font-bold text-stone-700 mb-4">Configuration & Data</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <h3 class="text-xl font-semibold text-stone-700 mb-3">Configuration Files</h3>
+                    <p class="text-stone-700 mb-4">The project uses YAML (`.yml`) files for configuration, primarily located in the `config/` directory. These files control:</p>
+                    <ul class="list-disc list-inside space-y-1 text-stone-600 text-sm">
+                        <li>Simulation parameters (grid case, contingency lists, output dirs)</li>
+                        <li>Data preprocessing steps (input/output paths, chunk size)</li>
+                        <li>Model training settings (hyperparameters, dataset paths, saving locations)</li>
+                        <li>Test-specific setups</li>
+                    </ul>
+                     <p class="text-stone-700 mt-4 text-sm">Example files: `case_1354.yml`, `preprocessing.yml`, `training.yml`.</p>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <h3 class="text-xl font-semibold text-stone-700 mb-3">Data Files</h3>
+                     <p class="text-stone-700 mb-4">Data is organized within the `data/` directory (though large files are typically ignored by Git):</p>
+                     <ul class="list-disc list-inside space-y-1 text-stone-600 text-sm">
+                        <li>`data/grids/*.py`: Definitions of power grid structures.</li>
+                        <li>`data/contingencies/*.txt`: Lists of contingencies (outages) to simulate.</li>
+                        <li>`data/raw/`: Stores raw output from simulations (often `.pkl` files).</li>
+                         <li>`01_TSDP.mat`: Example raw time-series input data (MATLAB format).</li>
+                        <li>`data/processed/`: Stores processed datasets ready for model training (often `.pt` files) and normalization parameters.</li>
+                        <li>`data/sample/`: May contain small sample datasets for testing.</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <section id="usage" class="mb-12 scroll-mt-20">
+            <h2 class="text-3xl font-bold text-stone-700 mb-4">Usage & Key Scripts</h2>
+            <div class="bg-white p-6 rounded-lg shadow">
+                 <p class="text-stone-700 mb-6">The `scripts/` directory contains Python scripts to execute the main steps of the project workflow. Here are some key ones:</p>
+                 <ul class="space-y-3 text-stone-700 text-sm">
+                    <li><strong class="font-semibold text-stone-800">`scripts/run_simulation_worker.py`</strong>: Runs contingency simulations (often in parallel using `--task-id`) based on a config file. Generates raw results in `data/raw/`.</li>
+                    <li><strong class="font-semibold text-stone-800">`scripts/aggregate_results.py`</strong>: Combines multiple raw result files (`.pkl`) into a single aggregated file.</li>
+                    <li><strong class="font-semibold text-stone-800">`scripts/run_preprocessing.py`</strong>: Processes aggregated raw data into a PyTorch Geometric dataset (`.pt`) suitable for GNNs, saving it to `data/processed/`.</li>
+                     <li><strong class="font-semibold text-stone-800">`scripts/run_training.py`</strong>: Trains the GNN model using the processed dataset and saves model checkpoints to `models/`.</li>
+                     <li><strong class="font-semibold text-stone-800">`scripts/run_evaluation.py`</strong>: Evaluates a trained model on a test dataset and reports metrics.</li>
+                     <li><strong class="font-semibold text-stone-800">`scripts/generate_contingencies.py`</strong>: Creates contingency list files (`.txt`) for specific grid cases.</li>
+                     <li><strong class="font-semibold text-stone-800">`scripts/hpc/`</strong>: Contains shell scripts (`.sh`) and SLURM templates (`.slurm`) for submitting and managing jobs on High-Performance Computing clusters.</li>
+                 </ul>
+                 <p class="text-stone-600 mt-4 text-xs italic">Refer to the main `README.md` and individual script help (`python script_name.py --help`) for detailed usage instructions.</p>
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // File Tree Interaction
+            const folders = document.querySelectorAll('.file-tree .folder > span');
+            folders.forEach(folder => {
+                folder.addEventListener('click', () => {
+                    folder.parentElement.classList.toggle('open');
+                });
+            });
+
+            const files = document.querySelectorAll('.file-tree .file');
+            const descriptionBox = document.getElementById('file-description');
+            files.forEach(file => {
+                file.addEventListener('mouseover', () => {
+                    const desc = file.getAttribute('data-desc');
+                    descriptionBox.textContent = desc || 'No description available.';
+                    descriptionBox.classList.remove('italic');
+                });
+                 file.addEventListener('mouseout', () => {
+                     // Optionally reset or keep the last description
+                     // descriptionBox.textContent = 'Hover over a file in the tree to see its description here.';
+                     // descriptionBox.classList.add('italic');
+                 });
+            });
+
+             // Workflow Diagram Interaction
+            const workflowSteps = document.querySelectorAll('.workflow-step');
+            const workflowDetails = document.getElementById('workflow-details');
+            workflowSteps.forEach(step => {
+                const tooltipSpan = step.querySelector('.tooltiptext');
+                const fileListText = tooltipSpan ? tooltipSpan.textContent.split('(Files: ')[1]?.replace(')','').trim() : 'No specific files listed.';
+
+                const displayDetails = () => {
+                    workflowDetails.textContent = `Relevant Files/Info: ${fileListText || 'Details about this step.'}`;
+                    // Highlight step
+                    workflowSteps.forEach(s => s.classList.remove('border-sky-500', 'border-2'));
+                    step.classList.add('border-sky-500', 'border-2');
+                };
+
+                 step.addEventListener('mouseover', displayDetails);
+                 step.addEventListener('click', displayDetails); // Make it sticky on click
+
+                 step.addEventListener('mouseout', () => {
+                    // Only remove highlight if not clicked (more complex state needed for true sticky click)
+                    // step.classList.remove('border-sky-500', 'border-2');
+                 });
+             });
+
+            // Smooth Scrolling and Active Nav Link Highlighting
+            const navLinks = document.querySelectorAll('.nav-link');
+            const sections = document.querySelectorAll('section[id]');
+
+             function updateActiveLink() {
+                let currentSectionId = '';
+                sections.forEach(section => {
+                    const sectionTop = section.offsetTop;
+                    // Adjust threshold (e.g., 150 pixels) for better activation timing
+                    if (pageYOffset >= sectionTop - 150) {
+                        currentSectionId = section.getAttribute('id');
+                    }
+                });
+
+                 navLinks.forEach(link => {
+                    link.classList.remove('active');
+                    if (link.getAttribute('href') === `#${currentSectionId}`) {
+                        link.classList.add('active');
+                    }
+                });
+             }
+
+            navLinks.forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const targetId = link.getAttribute('href');
+                    const targetElement = document.querySelector(targetId);
+                    if (targetElement) {
+                        window.scrollTo({
+                            top: targetElement.offsetTop - 70, // Adjust for fixed navbar height
+                            behavior: 'smooth'
+                        });
+                        // Manually update active link immediately on click for better UX
+                        navLinks.forEach(l => l.classList.remove('active'));
+                        link.classList.add('active');
+                    }
+                });
+            });
+
+            // Update active link on scroll and initial load
+            window.addEventListener('scroll', updateActiveLink);
+            updateActiveLink(); // Set initial active link
+
+        });
+    </script>
+</body>
+</html>

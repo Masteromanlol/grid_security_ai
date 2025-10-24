@@ -1,9 +1,14 @@
----
 # Configuration for case 1354 pegase
-grid:
-  name: case1354pegase
-  path: data/grids/case1354pegase.py
+# Updated to load directly from pandapower.networks
+
+log_dir: logs/simulation_case_1354 # Added: Directory for log files
+
+pandapower_module: pandapower.networks.case1354pegase # Loads the network function directly
+
+contingency_file: data/contingencies/contingencies_1354.txt # Path to the contingency list
+output_dir: data/raw/case_1354/ # Directory to save simulation results
 
 simulation:
-  contingencies_file: data/contingencies/contingencies_1354.txt
-  output_dir: data/raw/case_1354/
+  method: ac # Power flow method (ac or dc)
+  # Optional: Add contingencies_per_task if planning parallel runs
+  # contingencies_per_task: 200

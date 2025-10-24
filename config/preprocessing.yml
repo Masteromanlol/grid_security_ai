@@ -2,7 +2,7 @@
 log_dir: "logs/preprocessing"
 raw_simulation_dirs: 
   - "data/raw/simulation_results"
-  - "data/raw/case_1354_small"
+  - "data/raw/case_1354"
   - "data/raw/test_simulation"
 processed_dataset_file: "data/processed/full_dataset.pt"
 normalization_params_file: "data/processed/normalization.pt"

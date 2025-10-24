@@ -21,7 +21,7 @@ def find_isolated_buses(net: pp.pandapowerNet) -> set:
         Set of isolated bus indices
     """
     # Create graph from lines
-    edges = [(int(row['from_bus']), int(row['to_bus'])) 
+    edges = [(int(row['from_bus']), int(row['to_bus']))
             for _, row in net.line.iterrows() if row['in_service']]
     
     # Add transformer connections
@@ -130,28 +130,29 @@ def validate_config(config: Dict[str, Any]) -> None:
     if 'method' in sim_config and sim_config['method'] not in ['ac', 'dc']:
         raise ValueError("Simulation method must be 'ac' or 'dc'")
 
+
 def run_simulation(config_path: str, task_id: Optional[int] = None):
     """Run complete contingency analysis based on configuration.
-    
+
     Args:
         config_path: Path to YAML configuration file
         task_id: Optional SLURM array task ID for parallel processing
     """
     import os
     import pickle
-    
+
     # Load and validate config
     config = utils.load_config(config_path)
     validate_config(config)
-    
+
     # Set up logging with task-specific file
     log_name = f'simulation_task_{task_id}' if task_id else 'simulation'
     logger = utils.setup_logging(config['log_dir'], log_name)
-    
+
     # Load base network
     base_net = utils.get_pandapower_net(config)
     logger.info(f"Loaded network with {len(base_net.bus)} buses")
-    
+
     # Run base case with specified method
     method = config['simulation'].get('method', 'ac')
     try:
@@ -163,22 +164,41 @@ def run_simulation(config_path: str, task_id: Optional[int] = None):
     except Exception as e:
         logger.error(f"Base case power flow failed: {str(e)}")
         raise
-    
+
     # Load and validate contingency list
     contingencies = pd.read_csv(config['contingency_file'], delimiter=',')
     if 'type' not in contingencies.columns or 'id' not in contingencies.columns:
         raise ValueError("Contingency file must have 'type' and 'id' columns")
-    
+
     # Determine contingencies for this task
     total_contingencies = len(contingencies)
     if task_id is not None:
-        contingencies_per_task = 100
-        start_idx = (task_id - 1) * contingencies_per_task
-        end_idx = min(start_idx + contingencies_per_task, total_contingencies)
-        contingencies = contingencies.iloc[start_idx:end_idx]
-    
-    logger.info(f"Processing {len(contingencies)} contingencies")
-    
+        # Read contingencies_per_task from config if available, otherwise process all for task 1
+        contingencies_per_task = config['simulation'].get('contingencies_per_task')
+
+        if contingencies_per_task:
+            # Calculate slice based on config value
+            start_idx = (task_id - 1) * contingencies_per_task
+            end_idx = min(start_idx + contingencies_per_task, total_contingencies)
+            if start_idx >= total_contingencies:
+                 logger.info(f"Task ID {task_id} is out of range for {total_contingencies} contingencies. No contingencies to process.")
+                 contingencies = contingencies.iloc[0:0] # Empty slice
+            else:
+                 contingencies = contingencies.iloc[start_idx:end_idx]
+        elif task_id == 1:
+             # If config value not set and task_id is 1, process all
+             logger.info("contingencies_per_task not set in config, processing all contingencies for task ID 1.")
+             # No slicing needed, use the full 'contingencies' DataFrame
+        elif task_id > 1:
+             # Config value not set and task_id > 1, means user likely expected splitting but didn't configure it
+             logger.warning(f"contingencies_per_task not set in config. Task ID {task_id} will not process any contingencies as splitting is undefined.")
+             contingencies = contingencies.iloc[0:0] # Empty slice
+        else:
+             logger.info(f"Invalid task number: {task_id}")
+             contingencies = contingencies.iloc[0:0] # Empty slice
+
+    logger.info(f"Processing {len(contingencies)} contingencies for this task")
+
     # Process contingencies
     results = []
     for _, cont in contingencies.iterrows():
@@ -189,12 +209,12 @@ def run_simulation(config_path: str, task_id: Optional[int] = None):
                 method=method
             )
             results.append(result)
-            
+
             if result['success']:
                 logger.info(f"Contingency {cont['type']} {cont['id']} successful")
             else:
                 logger.warning(f"Contingency {cont['type']} {cont['id']} failed: {result.get('error')}")
-                
+
         except Exception as e:
             logger.error(f"Error processing contingency {cont['type']} {cont['id']}: {str(e)}")
             results.append({
@@ -202,19 +222,19 @@ def run_simulation(config_path: str, task_id: Optional[int] = None):
                 'contingency': {'type': cont['type'], 'id': cont['id']},
                 'error': str(e)
             })
-    
+
     # Save results
     output_dir = config['output_dir']
     os.makedirs(output_dir, exist_ok=True)
-    
+
     output_file = os.path.join(
         output_dir,
         f"results_task_{task_id}.pkl" if task_id else "results.pkl"
     )
-    
+
     with open(output_file, 'wb') as f:
         pickle.dump(results, f)
-    
+
     logger.info(f"Saved {len(results)} results to {output_file}")
     return results
 
@@ -241,3 +261,4 @@ def check_security_constraints(grid_state: Dict[str, pd.DataFrame]) -> Dict[str,
     checks['trafos_not_overloaded'] = (grid_state['trafo_results']['loading_percent'] <= 100.0).all()
     
     return checks
+

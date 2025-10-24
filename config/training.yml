@@ -1,8 +1,10 @@
 # Training configuration for Grid Security AI
 log_dir: "logs/training"
 model_save_dir: "models/checkpoints"
-processed_dataset_file: "data/processed/dataset.pt"
+processed_dataset_file: "data/processed/train.pt"
 normalization_params_file: "data/processed/normalization.pt"
+val_dataset_file: "data/processed/val.pt"
+test_dataset_file: "data/processed/test.pt"
 
 # Model parameters
 model:
@@ -17,10 +19,10 @@ model:
 
 # Training parameters optimized for grid security
 training:
-  batch_size: 1           # Single sample for smoke test
+  batch_size: 32          # Batch size for training
   learning_rate: 0.001    # Standard learning rate for Adam
-  num_epochs: 1           # Smoke test: single epoch
-  patience: 30            # Patience (not relevant for 1 epoch)
-  val_split: 0.0          # No validation split for smoke test
+  num_epochs: 100         # Number of epochs for training
+  patience: 30            # Patience for early stopping
+  val_split: 0.0          # No validation split since using separate val file
   max_grad_norm: 1.0      # Prevent exploding gradients
   weight_decay: 0.0001    # L2 regularization to prevent overfitting
