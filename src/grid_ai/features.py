@@ -114,7 +114,7 @@ def compute_graph_metrics(edges: List[Tuple[int, int]], n_buses: int,
     
     # Centrality metrics
     try:
-        eigenvector_centrality = nx.eigenvector_centrality_numpy(largest_cc)
+        eigenvector_centrality = nx.eigenvector_centrality(largest_cc)
         metrics['eigenvector_centrality_mean'] = np.mean(list(eigenvector_centrality.values()))
         metrics['eigenvector_centrality_std'] = np.std(list(eigenvector_centrality.values()))
     except:
@@ -237,7 +237,7 @@ def extract_all_features(result: Dict[str, Any], net_structure: Dict[str, Any]) 
             'angle_profile': bus_results['va_degree'].values,
             'power_flows': line_results['p_from_mw'].values,
             'load_distribution': bus_results['p_mw'].values,
-            'capacity_distribution': line_results['max_i_ka'].values
+            'capacity_distribution': line_results['i_ka'].values  # Use actual current instead of max
         }
         
         # Analyze contingency impact

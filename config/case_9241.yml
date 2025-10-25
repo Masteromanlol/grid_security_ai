@@ -1,13 +1,17 @@
 # Configuration for case 9241 pegase
 # Updated to load directly from pandapower.networks
 
-log_dir: logs/simulation_case_9241 # Directory for log files
+log_dir: logs/preprocessing_case_9241 # Directory for log files
 
 pandapower_module: pandapower.networks.case9241pegase # Loads the network function directly
 
 contingency_file: data/contingencies/contingencies_9241.txt # Path to the contingency list
 output_dir: data/raw/case_9241/ # Directory to save simulation results
-
+processed_dataset_file: data/processed/case_9241_dataset.pt
+normalization_params_file: data/processed/case_9241_normalization.pt
+raw_simulation_dirs:
+  - data/raw/case_9241
+chunk_size: 1000
 simulation:
   method: ac # Power flow method (ac or dc)
   # Optional: Add contingencies_per_task if planning parallel runs

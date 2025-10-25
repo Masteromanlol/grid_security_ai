@@ -1,0 +1,28 @@
+# Training configuration for case 9241
+log_dir: "logs/training_case_9241"
+model_save_dir: "models/checkpoints_case_9241"
+processed_dataset_file: "data/processed/case_9241_train.pt"
+normalization_params_file: "data/processed/case_9241_normalization.pt"
+val_dataset_file: "data/processed/case_9241_val.pt"
+test_dataset_file: "data/processed/case_9241_test.pt"
+
+# Model parameters
+model:
+  input_dim: 10  # Node features from actual data
+  hidden_dim: 256  # Larger hidden dim for complex grid patterns
+  num_layers: 4    # Deep network for capturing multi-hop dependencies
+  dropout: 0.2     # Increased dropout for better regularization
+  output_dim: 2    # Two regression targets from actual data
+  gnn_type: "gat"  # Using GAT for attention to important connections
+  use_edge_weights: true   # Utilize power flow information
+  residual: true   # Help with gradient flow in deep network
+
+# Training parameters optimized for grid security
+training:
+  batch_size: 32          # Batch size for training
+  learning_rate: 0.001    # Standard learning rate for Adam
+  num_epochs: 100         # Number of epochs for training
+  patience: 30            # Patience for early stopping
+  val_split: 0.0          # No validation split since using separate val file
+  max_grad_norm: 1.0      # Prevent exploding gradients
+  weight_decay: 0.0001    # L2 regularization to prevent overfitting

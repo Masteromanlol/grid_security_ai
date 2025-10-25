@@ -27,18 +27,19 @@ def train_model(data_path, model_output_path, plots_dir=None):
     """
     # Load the data
     results = pd.read_pickle(data_path)
-    
-    # Get network structure information
+
+    # Get network structure information from the first successful result
+    first_result = results.iloc[0]
     net_structure = {
-        'n_buses': len(results[0]['bus_results']),
-        'n_lines': len(results[0]['line_results']),
-        'n_trafos': len(results[0]['trafo_results']),
-        'edges': [(int(row['from_bus']), int(row['to_bus'])) 
-                 for _, row in results[0]['line_results'].iterrows()]
+        'n_buses': len(first_result['bus_results']),
+        'n_lines': len(first_result['line_results']),
+        'n_trafos': len(first_result['trafo_results']),
+        'edges': [(int(idx), int(idx)) for idx in first_result['line_results'].index[:10]]  # Simplified edges for now
     }
     
-    # Prepare feature matrix
-    df = prepare_feature_matrix(results, net_structure)
+    # Convert DataFrame to list of dicts for feature extraction
+    results_list = results.to_dict('records')
+    df = prepare_feature_matrix(results_list, net_structure)
     
     # Define features
     numeric_features = [

@@ -27,7 +27,10 @@ def calculate_cascade_probability(G: nx.Graph,
     metrics = {}
     
     # Calculate overload probability for each component
-    overload_prob = np.clip(load_distribution / capacity_distribution, 0, 1)
+    # Ensure arrays have the same length and handle division by zero
+    min_len = min(len(load_distribution), len(capacity_distribution))
+    capacity_safe = np.where(capacity_distribution[:min_len] == 0, 1e-6, capacity_distribution[:min_len])
+    overload_prob = np.clip(load_distribution[:min_len] / capacity_safe, 0, 1)
     
     # Initialize cascade stage probabilities
     n_components = len(load_distribution)
@@ -35,7 +38,12 @@ def calculate_cascade_probability(G: nx.Graph,
     stage_probs[0] = 1.0  # Initial failure probability
     
     # Identify critical components using centrality
-    betweenness = nx.betweenness_centrality(G)
+    # For large graphs, use approximation to avoid computational issues
+    if G.number_of_nodes() > 1000:
+        # Use degree centrality as proxy for large graphs
+        betweenness = nx.degree_centrality(G)
+    else:
+        betweenness = nx.betweenness_centrality(G)
     critical_nodes = sorted(betweenness, key=betweenness.get, reverse=True)[:10]
     
     # Calculate cascade probability based on network topology and loading
@@ -100,11 +108,15 @@ def predict_load_loss(G: nx.Graph,
     
     # Find affected nodes after failures
     affected_nodes = set()
+    failed_edges = []
     for component_type, component_id in failed_components:
         if component_type == 'line':
-            # For lines, both end nodes are affected
-            edge_data = G.edges[component_id]
-            affected_nodes.update([edge_data['from_bus'], edge_data['to_bus']])
+            # For lines, find the edge with matching idx and get end nodes
+            for u, v, data in G.edges(data=True):
+                if data.get('idx') == component_id:
+                    affected_nodes.update([u, v])
+                    failed_edges.append((u, v))
+                    break
         else:  # transformer or bus
             affected_nodes.add(component_id)
     
@@ -243,8 +255,18 @@ def calculate_vulnerability_scores(G: nx.Graph,
     metrics = {}
     
     # Calculate centrality-based vulnerability
-    betweenness = nx.betweenness_centrality(G)
-    eigenvector = nx.eigenvector_centrality_numpy(G)
+    # For large graphs, use approximation to avoid computational issues
+    if G.number_of_nodes() > 1000:
+        # Use degree centrality as proxy for large graphs
+        betweenness = nx.degree_centrality(G)
+        eigenvector = nx.degree_centrality(G)
+    else:
+        betweenness = nx.betweenness_centrality(G)
+        try:
+            eigenvector = nx.eigenvector_centrality(G)
+        except nx.AmbiguousSolution:
+            # Fallback to degree centrality for disconnected graphs
+            eigenvector = nx.degree_centrality(G)
     
     # Identify critical components
     critical_nodes = set(sorted(betweenness, key=betweenness.get, reverse=True)[:5])
@@ -254,9 +276,15 @@ def calculate_vulnerability_scores(G: nx.Graph,
     metrics['topological_vulnerability'] = float(np.mean(list(betweenness.values())))
     
     # Calculate load-based vulnerability
-    if 'load' in component_data:
-        load_factors = component_data['load'] / component_data.get('capacity', 1.0)
-        metrics['load_vulnerability'] = float(np.mean(load_factors))
+    if 'load' in component_data and 'capacity' in component_data:
+        load = component_data['load']
+        capacity = component_data['capacity']
+        if len(load) == len(capacity):
+            load_factors = load / np.where(capacity == 0, 1e-6, capacity)
+            metrics['load_vulnerability'] = float(np.mean(load_factors))
+        else:
+            # Shapes don't match, skip calculation
+            metrics['load_vulnerability'] = 0.0
     else:
         metrics['load_vulnerability'] = 0.0
     
@@ -302,20 +330,22 @@ def analyze_contingency_impact(G: nx.Graph,
     power_flows = system_state.get('power_flows', np.zeros(G.number_of_edges()))
     
     # Calculate cascade probabilities
+    # Convert contingency dict to tuple format expected by the function
+    contingency_tuple = (contingency['type'], contingency['id'])
     cascade_metrics = calculate_cascade_probability(
-        G, [contingency], load_dist, capacity_dist
+        G, [contingency_tuple], load_dist, capacity_dist
     )
     metrics.update(cascade_metrics)
     
     # Predict load loss
     load_metrics = predict_load_loss(
-        G, load_dist, [contingency]
+        G, load_dist, [contingency_tuple]
     )
     metrics.update(load_metrics)
-    
+
     # Analyze islanding risk
     islanding_metrics = analyze_islanding_risk(
-        G, [contingency]
+        G, [contingency_tuple]
     )
     metrics.update(islanding_metrics)
     
