@@ -86,10 +86,16 @@ class GridSecurityModel(nn.Module):
     def reset_parameters(self):
         """Initialize model parameters using Xavier initialization."""
         def init_weights(m):
-            if isinstance(m, (nn.Linear, GCNConv)):
+            if isinstance(m, nn.Linear):
                 torch.nn.init.xavier_uniform_(m.weight)
                 if hasattr(m, 'bias') and m.bias is not None:
                     torch.nn.init.zeros_(m.bias)
+            elif isinstance(m, GCNConv):
+                # GCNConv has lin.weight and lin.bias
+                if hasattr(m, 'lin') and hasattr(m.lin, 'weight'):
+                    torch.nn.init.xavier_uniform_(m.lin.weight)
+                if hasattr(m, 'lin') and hasattr(m.lin, 'bias') and m.lin.bias is not None:
+                    torch.nn.init.zeros_(m.lin.bias)
             elif isinstance(m, GATConv):
                 if hasattr(m, 'lin'):
                     torch.nn.init.xavier_uniform_(m.lin.weight)
@@ -97,7 +103,7 @@ class GridSecurityModel(nn.Module):
                     torch.nn.init.xavier_uniform_(m.att.weight)
                 if hasattr(m, 'bias') and m.bias is not None:
                     torch.nn.init.zeros_(m.bias)
-                    
+
         self.apply(init_weights)
     
     def forward(self, data):

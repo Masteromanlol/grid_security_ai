@@ -62,8 +62,15 @@ def train_epoch(model, loader, criterion, optimizer, scheduler, device, max_grad
                 logger.error("NaN values in model output")
                 return None
                 
-            # Calculate graph-level target by averaging node values
+            # Get graph-level targets (batch.y is already node-level, pool to graph-level)
             y = global_mean_pool(batch.y, batch.batch)  # Average node predictions to get graph-level target
+
+            # Ensure output and target have same batch size
+            if output.size(0) != y.size(0):
+                logger.error(f"Output batch size {output.size(0)} != target batch size {y.size(0)}")
+                logger.error(f"Output shape: {output.shape}, Target shape: {y.shape}")
+                return None
+
             loss = criterion(output, y)
             
             # Check for NaN loss
@@ -96,27 +103,33 @@ def train_epoch(model, loader, criterion, optimizer, scheduler, device, max_grad
 
 def validate_model(model, loader, criterion, device):
     """Validate model on validation set.
-    
+
     Args:
         model: GridSecurityModel instance
         loader: PyG DataLoader
         criterion: Loss function
         device: Device to run on
-        
+
     Returns:
         Average validation loss
     """
     model.eval()
     total_loss = 0
-    
+
     with torch.no_grad():
         for batch in loader:
             batch = batch.to(device)
             output = model(batch)
             y = global_mean_pool(batch.y, batch.batch)  # Average node predictions to get graph-level target
+
+            # Ensure output and target have same batch size
+            if output.size(0) != y.size(0):
+                logger.error(f"Validation: Output batch size {output.size(0)} != target batch size {y.size(0)}")
+                continue
+
             loss = criterion(output, y)
             total_loss += loss.item() * batch.num_graphs
-    
+
     return total_loss / len(loader.dataset)
 
 def save_model(model, optimizer, epoch, loss, path):
@@ -211,15 +224,22 @@ def run_training_pipeline(config_path):
             train_dataset = dataset
             val_dataset = dataset  # Use same data for validation in smoke test
         
-        # Create dataloaders
+        # Create dataloaders with optimized settings
+        num_workers = config['training'].get('num_workers', 0)
+        pin_memory = config['training'].get('pin_memory', False)
+
         train_loader = DataLoader(
             train_dataset,
             batch_size=config['training']['batch_size'],
-            shuffle=True
+            shuffle=True,
+            num_workers=num_workers,
+            pin_memory=pin_memory
         )
         val_loader = DataLoader(
             val_dataset,
-            batch_size=config['training']['batch_size']
+            batch_size=config['training']['batch_size'],
+            num_workers=num_workers,
+            pin_memory=pin_memory
         )
         
         # Check dimensions

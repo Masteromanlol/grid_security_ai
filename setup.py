@@ -11,6 +11,12 @@ setup(
         "numpy",
         "pyyaml",
         "pandapower",
+        "matplotlib",
+        "seaborn",
+        "scikit-learn",
+        "jupyterlab",
+        "networkx",
+        "streamlit",
     ],
     python_requires=">=3.9",
 )

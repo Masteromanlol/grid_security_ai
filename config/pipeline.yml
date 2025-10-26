@@ -1,0 +1,67 @@
+# Master Pipeline Configuration for Grid Security AI
+# This config allows running the full pipeline with a single command
+
+# Pipeline settings
+pipeline:
+  steps: ["simulate", "preprocess", "train", "evaluate"]  # Steps to run
+  case: "case_9241"  # Grid case to use (case_1354, case_9241, case_13659)
+  mode: "fast"  # "fast" for laptop-optimized, "full" for production
+
+# Grid case settings
+case:
+  name: "case_9241"
+  grid_module: "pandapower.networks.case9241pegase"
+  contingency_file: "data/contingencies/contingencies_9241.txt"
+
+# Simulation settings
+simulation:
+  method: "ac"  # "ac" or "dc" power flow
+  output_dir: "data/raw/case_9241"
+  num_workers: 1  # For parallel simulation (set >1 for HPC)
+
+# Preprocessing settings
+preprocessing:
+  processed_dataset_file: "data/processed/case_9241_dataset.pt"
+  normalization_params_file: "data/processed/case_9241_normalization.pt"
+  chunk_size: 1000
+  raw_simulation_dirs:
+    - "data/raw/case_9241"
+
+# Training settings (fast mode - laptop optimized)
+training:
+  log_dir: "logs/training_case_9241_fast"
+  model_save_dir: "models/checkpoints_case_9241_fast"
+  processed_dataset_file: "data/processed/case_9241_train.pt"
+  normalization_params_file: "data/processed/case_9241_normalization.pt"
+  val_dataset_file: "data/processed/case_9241_val.pt"
+  test_dataset_file: "data/processed/case_9241_test.pt"
+
+  model:
+    input_dim: 10
+    hidden_dim: 128
+    num_layers: 2
+    dropout: 0.2
+    output_dim: 2
+    gnn_type: "gcn"
+    use_edge_weights: false
+    residual: true
+
+  training:
+    batch_size: 16
+    learning_rate: 0.001
+    num_epochs: 30
+    patience: 10
+    val_split: 0.0
+    max_grad_norm: 1.0
+    weight_decay: 0.0001
+    num_workers: 2
+    pin_memory: false
+
+# Evaluation settings
+evaluation:
+  log_dir: "logs/evaluation_case_9241"
+  results_dir: "results/evaluation"
+  plot_dir: "plots/diagnostics"
+  model_path: "models/checkpoints_case_9241_fast/best_model.pt"
+  test_dataset_file: "data/processed/case_9241_test.pt"
+  output_dim_names: ["vm_pu", "va_degree"]

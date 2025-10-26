@@ -1,0 +1,30 @@
+# Fast training configuration for case 9241 (optimized for laptop)
+log_dir: "logs/training_case_9241_fast"
+model_save_dir: "models/checkpoints_case_9241_fast"
+processed_dataset_file: "data/processed/case_9241_train.pt"
+normalization_params_file: "data/processed/case_9241_normalization.pt"
+val_dataset_file: "data/processed/case_9241_val.pt"
+test_dataset_file: "data/processed/case_9241_test.pt"
+
+# Model parameters optimized for speed
+model:
+  input_dim: 10  # Node features from actual data
+  hidden_dim: 128  # Reduced from 256 for faster training
+  num_layers: 2    # Reduced from 4 for faster training
+  dropout: 0.2     # Same dropout
+  output_dim: 2    # Two regression targets from actual data
+  gnn_type: "gcn"  # Changed from GAT to GCN (faster, less memory)
+  use_edge_weights: false   # Disable edge weights for GCN compatibility
+  residual: true   # Keep residual connections
+
+# Training parameters optimized for speed
+training:
+  batch_size: 16          # Reduced from 32 for better memory usage
+  learning_rate: 0.001    # Same learning rate
+  num_epochs: 30          # Reduced from 100 for faster iteration
+  patience: 10            # Reduced from 30 for earlier stopping
+  val_split: 0.0          # No validation split since using separate val file
+  max_grad_norm: 1.0      # Same gradient clipping
+  weight_decay: 0.0001    # Same regularization
+  num_workers: 2          # Added for parallel data loading
+  pin_memory: false       # Disabled for CPU-only training
